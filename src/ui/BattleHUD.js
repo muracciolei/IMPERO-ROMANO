@@ -191,7 +191,8 @@ export class BattleHUD {
         <div class="uc-head"><span class="uc-icon">${icon}</span><span class="uc-name">${sq.type.name}</span><span class="uc-count">${sq.aliveCount}/${sq.n0}</span></div>
         <div class="uc-bar morale"><i></i></div>
         <div class="uc-bar fatigue"><i></i></div>
-        <div class="uc-form">${FORMATIONS[sq.formation]?.name || ''}${sq.state === 'rout' ? ' · IN ROTTA' : ''}</div>`;
+        <div class="uc-form">${FORMATIONS[sq.formation]?.name || ''}${sq.state === 'rout' ? ' · IN ROTTA' : ''}</div>
+        <div class="uc-order">HOLD</div>`;
       card.addEventListener('click', (e) => {
         this.battle.input.select([sq], e.shiftKey);
       });
@@ -202,6 +203,7 @@ export class BattleHUD {
         morale: card.querySelector('.morale i'),
         fatigue: card.querySelector('.fatigue i'),
         form: card.querySelector('.uc-form'),
+        order: card.querySelector('.uc-order'),
         card,
       });
     }
@@ -340,6 +342,9 @@ export class BattleHUD {
       const formName = FORMATIONS[sq.formation]?.name || '';
       const label = formName + (sq.state === 'rout' ? ' · IN ROTTA' : '');
       if (ref.form.textContent !== label) ref.form.textContent = label;
+      const ord = sq.state === 'rout' ? 'FUGA' : { move: 'MOVI', attack: 'ATTACCA', attackmove: 'AVANZA', structure: 'ASSALTO', hold: 'HOLD', column: 'MARCIA' }[sq.order.kind] || 'HOLD';
+      if (ref.order.textContent !== ord) ref.order.textContent = ord;
+      ref.order.className = 'uc-order ' + (sq.order.kind === 'attack' || sq.order.kind === 'attackmove' ? 'aggressive' : '');
       ref.card.classList.toggle('routing', sq.state === 'rout');
     }
 
