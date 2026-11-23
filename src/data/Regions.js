@@ -72,7 +72,7 @@ export const INITIAL_ROMAN = ['latium'];
 
 // Mari etichettati (stile mappa antica).
 export const SEAS = [
-  { name: 'MARE INTERNVM', x: 470, y: 380, size: 26, rot: -0.08 },
+  { name: 'MARE INTERNVM', x: 800, y: 505, size: 17, rot: -0.08 },
   { name: 'Mare Tyrrhenum', x: 372, y: 316, size: 12, rot: -0.5 },
   { name: 'Mare Hadriaticum', x: 442, y: 250, size: 10, rot: 0.7 },
   { name: 'Mare Aegaeum', x: 572, y: 322, size: 11, rot: 0 },

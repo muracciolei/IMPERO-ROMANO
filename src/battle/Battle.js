@@ -45,7 +45,7 @@ export class Battle {
 
     this.input = new BattleInput(this);
     this.hud = new BattleHUD(this);
-    this.input.focus(this.sim.playerGeneral.anchor.x, this.sim.playerGeneral.anchor.z - 20, 130);
+    this.input.focus(this.sim.playerGeneral.anchor.x, this.sim.playerGeneral.anchor.z - 20, 98);
 
     this.soldierRenderer.refreshColors(this.sim);
     this.onSelectionChanged();
@@ -77,7 +77,7 @@ export class Battle {
     this.renderer.shadowMap.enabled = this.quality === 'alta';
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.05;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 1, 1400);
@@ -98,9 +98,9 @@ export class Battle {
 
     this._buildSky();
 
-    const hemi = new THREE.HemisphereLight(0xdfe8f0, 0x6b6250, 1.05);
+    const hemi = new THREE.HemisphereLight(0xd6e4f0, 0x574734, 0.62);
     this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffeed0, 2.4);
+    const sun = new THREE.DirectionalLight(0xffe6b8, 2.9);
     sun.position.set(140, 190, -90);
     sun.castShadow = this.quality === 'alta';
     sun.shadow.mapSize.set(this.quality === 'alta' ? 2048 : 1024, this.quality === 'alta' ? 2048 : 1024);
@@ -255,25 +255,22 @@ export class Battle {
     }
     // zona di schieramento visibile
     const r = this.sim.deployRect;
-    this.deployZone = this.terrain.buildZone({ x: r.x, z: r.z, r: Math.max(r.w, r.d) * 0.55 }, 0x9e2b25);
+    this.deployZone = this.terrain.buildDeployRect(r, 0x9e2b25);
   }
 
   // ---------- stati ----------
   startBattle() {
     if (this.state !== 'deployment') return;
     this.state = 'running';
-    this.deployZone.ring.visible = false;
-    this.deployZone.disc.visible = false;
-    this.deployZone.pole.visible = false;
-    this.deployZone.flag.visible = false;
+    this.deployZone.group.visible = false;
     this.hud.enterBattle();
     Audio.startBattleAmbience();
     Audio.horn();
     this.hud.message(`${this.mission.name} — la battaglia ha inizio!`, 'info');
     if (this.mission.id === 'regillo' && Save.settings.showHints) {
-      this.hud.message('ESERCITO: tocca 👑 Todos per selezionare tutte le coorti', 'info');
-      setTimeout(() => this.hud.message('ORDINE: scegli ⚔ Avanzar e tocca il terreno per caricare', 'info'), 2600);
-      setTimeout(() => this.hud.message('TATTICA: usa ▭ Selecc. per scegliere gruppi e le formazioni in basso', 'info'), 5200);
+      this.hud.message('ESERCITO: tocca 👑 Tutti per selezionare tutte le coorti', 'info');
+      setTimeout(() => this.hud.message('ORDINE: scegli ⚔ Avanti e tocca il terreno per caricare', 'info'), 2600);
+      setTimeout(() => this.hud.message('TATTICA: usa ▭ Selez. per scegliere gruppi e le formazioni in basso', 'info'), 5200);
     }
   }
 

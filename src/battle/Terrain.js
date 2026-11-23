@@ -8,28 +8,32 @@ import * as THREE from 'three';
 import { makeRNG, makeNoise2D, fbm, clamp } from '../core/RNG.js';
 
 const BIOMES = {
-  mediterraneo: { grass: [0.42, 0.44, 0.22], dry: [0.55, 0.50, 0.28], rock: [0.45, 0.42, 0.36], sand: [0.62, 0.56, 0.38], tree: 0x4a6b2f, trunk: 0x5a4630, fog: 0xc8b890, sky: 0x9fb8c8 },
-  verde:        { grass: [0.30, 0.46, 0.20], dry: [0.42, 0.50, 0.24], rock: [0.42, 0.42, 0.38], sand: [0.55, 0.52, 0.36], tree: 0x2f5a26, trunk: 0x4f3d28, fog: 0xb8c8b0, sky: 0x9fc0d0 },
+  mediterraneo: { grass: [0.31, 0.43, 0.17], dry: [0.53, 0.48, 0.25], rock: [0.45, 0.42, 0.36], sand: [0.62, 0.56, 0.38], tree: 0x466a2c, trunk: 0x5a4630, fog: 0xc8b890, sky: 0x9fb8c8 },
+  verde:        { grass: [0.24, 0.42, 0.15], dry: [0.40, 0.47, 0.21], rock: [0.42, 0.42, 0.38], sand: [0.55, 0.52, 0.36], tree: 0x2f5a26, trunk: 0x4f3d28, fog: 0xb8c8b0, sky: 0x9fc0d0 },
   arido:        { grass: [0.58, 0.50, 0.30], dry: [0.66, 0.58, 0.36], rock: [0.52, 0.46, 0.36], sand: [0.72, 0.64, 0.44], tree: 0x6b7a3a, trunk: 0x6b5236, fog: 0xd8c8a0, sky: 0xc0c8c0 },
-  foresta:      { grass: [0.24, 0.38, 0.18], dry: [0.32, 0.42, 0.22], rock: [0.38, 0.38, 0.34], sand: [0.45, 0.44, 0.30], tree: 0x24481e, trunk: 0x453524, fog: 0xa8b8a0, sky: 0x90b0c0 },
-  aspro:        { grass: [0.38, 0.40, 0.26], dry: [0.48, 0.46, 0.30], rock: [0.48, 0.45, 0.40], sand: [0.55, 0.50, 0.36], tree: 0x3f5a2c, trunk: 0x50402c, fog: 0xb8b8a8, sky: 0xa0b8c8 },
+  foresta:      { grass: [0.19, 0.34, 0.14], dry: [0.28, 0.40, 0.19], rock: [0.38, 0.38, 0.34], sand: [0.45, 0.44, 0.30], tree: 0x24481e, trunk: 0x453524, fog: 0xa8b8a0, sky: 0x90b0c0 },
+  aspro:        { grass: [0.33, 0.38, 0.21], dry: [0.44, 0.43, 0.26], rock: [0.48, 0.45, 0.40], sand: [0.55, 0.50, 0.36], tree: 0x3f5a2c, trunk: 0x50402c, fog: 0xb8b8a8, sky: 0xa0b8c8 },
 };
 
 function mergeGeoms(geoms) {
-  // Unisce geometrie non indicizzate in una sola (position+normal).
+  // Unisce geometrie non indicizzate in una sola (position+normal, color se presente).
   let total = 0;
   const nonIndexed = geoms.map((g) => { const n = g.index ? g.toNonIndexed() : g; total += n.attributes.position.count; return n; });
+  const hasColor = nonIndexed.every((g) => g.attributes.color);
   const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3);
+  const col = hasColor ? new Float32Array(total * 3) : null;
   let off = 0;
   for (const g of nonIndexed) {
     pos.set(g.attributes.position.array, off * 3);
     nor.set(g.attributes.normal.array, off * 3);
+    if (col) col.set(g.attributes.color.array, off * 3);
     off += g.attributes.position.count;
     g.dispose();
   }
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  if (col) out.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return out;
 }
 
@@ -37,6 +41,20 @@ function box(w, h, d, x, y, z, ry = 0) {
   const g = new THREE.BoxGeometry(w, h, d);
   const m = new THREE.Matrix4().makeRotationY(ry).setPosition(x, y, z);
   g.applyMatrix4(m);
+  return g;
+}
+
+// Colora una geometria con una tinta uniforme e una leggera variazione.
+function vertexColor(geo, color, jitter = 0.12) {
+  const g = geo.index ? geo.toNonIndexed() : geo;
+  const count = g.attributes.position.count;
+  const arr = new Float32Array(count * 3);
+  const c = new THREE.Color(color);
+  const v = 1 - jitter + Math.random() * jitter * 2;
+  for (let i = 0; i < count; i++) {
+    arr[i * 3] = c.r * v; arr[i * 3 + 1] = c.g * v; arr[i * 3 + 2] = c.b * v;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
   return g;
 }
 
@@ -130,17 +148,18 @@ export class Terrain {
       const slope = this.getSlope(x, z);
       const forest = this.isForest(x, z);
       const n = fbm(this.noise2, x * 0.08 + 40, z * 0.08 + 40, 2);
+      const broad = fbm(this.noise, x * 0.017, z * 0.017, 2);
       let r, g, bl;
       if (h < this.waterLevel + 0.6) { [r, g, bl] = b.sand; }
       else if (slope > 0.55) { [r, g, bl] = b.rock; }
       else {
-        const t = clamp(n * 1.2 - 0.1 + (h - 1.2) * 0.03, 0, 1);
+        const t = clamp(0.2 + (n - 0.5) * 1.6 + (broad - 0.5) * 0.7 + (h - 1.2) * 0.02, 0, 1);
         r = b.grass[0] + (b.dry[0] - b.grass[0]) * t;
         g = b.grass[1] + (b.dry[1] - b.grass[1]) * t;
         bl = b.grass[2] + (b.dry[2] - b.grass[2]) * t;
         if (forest) { r *= 0.72; g *= 0.85; bl *= 0.7; }
       }
-      const v = 0.92 + rng() * 0.16;
+      const v = 0.86 + rng() * 0.22;
       colors[i * 3] = r * v; colors[i * 3 + 1] = g * v; colors[i * 3 + 2] = bl * v;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -179,20 +198,19 @@ export class Terrain {
   _buildVegetation(quality) {
     const b = this.biome;
     const treeCount = quality === 'bassa' ? 140 : quality === 'alta' ? 420 : 260;
-    const trunk = box(0.35, 2.2, 0.35, 0, 1.1, 0);
-    const canopy = new THREE.IcosahedronGeometry(1.7, 0);
-    canopy.scale(1, 1.25, 1); canopy.translate(0, 3.1, 0);
-    const treeGeo = mergeGeoms([trunk, canopy]);
-    // colorazione per-vertex: tronco marrone, chioma verde
-    const colArr = new Float32Array(treeGeo.attributes.position.count * 3);
-    const tc = new THREE.Color(b.trunk), lc = new THREE.Color(b.tree);
-    for (let i = 0; i < treeGeo.attributes.position.count; i++) {
-      const y = treeGeo.attributes.position.getY(i);
-      const c = y < 2.2 ? tc : lc;
-      const v = 0.85 + Math.random() * 0.3;
-      colArr[i * 3] = c.r * v; colArr[i * 3 + 1] = c.g * v; colArr[i * 3 + 2] = c.b * v;
-    }
-    treeGeo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+    const blob = (r, x, y, z) => {
+      const g = new THREE.IcosahedronGeometry(r, 0);
+      g.scale(1, 1.15, 1);
+      g.translate(x, y, z);
+      return g;
+    };
+    // Chioma a grappoli: legge come un albero, non come un sasso verde.
+    const treeGeo = mergeGeoms([
+      vertexColor(box(0.34, 2.4, 0.34, 0, 1.2, 0), b.trunk, 0.1),
+      vertexColor(blob(1.45, 0, 3.0, 0), b.tree, 0.16),
+      vertexColor(blob(1.0, 0.8, 2.6, 0.25), b.tree, 0.24),
+      vertexColor(blob(0.9, -0.7, 2.75, -0.2), b.tree, 0.3),
+    ]);
     const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.trees = new THREE.InstancedMesh(treeGeo, treeMat, treeCount);
     this.trees.castShadow = quality === 'alta';
@@ -246,6 +264,40 @@ export class Terrain {
     this.rocks.instanceMatrix.needsUpdate = true;
     this.rocks.frustumCulled = false;
     this.group.add(this.rocks);
+
+    // Ciuffi d'erba: una sola draw call, danno texture e profondità al terreno.
+    const tuftGeoms = [];
+    for (let i = 0; i < 3; i++) {
+      const blade = new THREE.ConeGeometry(0.06, 0.5, 3);
+      blade.translate((i - 1) * 0.09, 0.25, (i % 2) * 0.07);
+      tuftGeoms.push(blade);
+    }
+    const tuftCount = quality === 'bassa' ? 1500 : quality === 'alta' ? 5200 : 3400;
+    this.tufts = new THREE.InstancedMesh(mergeGeoms(tuftGeoms), new THREE.MeshBasicMaterial({}), tuftCount);
+    this.tufts.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(tuftCount * 3).fill(1), 3);
+    const up = new THREE.Vector3(0, 1, 0);
+    const grassC = new THREE.Color(0x8a9a4a);
+    const dryC = new THREE.Color(0xb3a466);
+    const col = new THREE.Color();
+    let tp = 0; guard = 0;
+    while (tp < tuftCount && guard++ < tuftCount * 6) {
+      const x = this.rng.range(-this.half + 8, this.half - 8);
+      const z = this.rng.range(-this.half + 8, this.half - 8);
+      if (this.inWater(x, z)) continue;
+      const y = this.getHeight(x, z);
+      const s = this.rng.range(0.6, 1.45);
+      q.setFromAxisAngle(up, this.rng() * Math.PI * 2);
+      m.compose(p.set(x, y - 0.04, z), q, sc.set(s, s * this.rng.range(0.8, 1.5), s));
+      this.tufts.setMatrixAt(tp, m);
+      col.copy(grassC).lerp(dryC, this.rng() * 0.5).multiplyScalar(this.rng.range(0.85, 1.05));
+      this.tufts.instanceColor.setXYZ(tp, col.r, col.g, col.b);
+      tp++;
+    }
+    this.tufts.count = tp;
+    this.tufts.instanceMatrix.needsUpdate = true;
+    this.tufts.instanceColor.needsUpdate = true;
+    this.tufts.frustumCulled = false;
+    this.group.add(this.tufts);
 
     // Alberi come ostacoli leggeri (solo i più grandi)
     for (const t of this.treePositions) if (t.r > 0.75) this.obstacles.push({ x: t.x, z: t.z, r: t.r * 0.7, natural: true });
@@ -318,6 +370,44 @@ export class Terrain {
     cmd.add(flag);
     cmdS.flag = flag;
     return this.structures;
+  }
+
+  // ---------- area di schieramento ----------
+  buildDeployRect(rect, color = 0x9e2b25) {
+    const group = new THREE.Group();
+    const geo = new THREE.PlaneGeometry(rect.w, rect.d, 16, 8);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i) + rect.x, z = pos.getZ(i) + rect.z;
+      pos.setY(i, this.getHeight(x, z) + 0.1);
+    }
+    const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.045, depthWrite: false, side: THREE.DoubleSide }));
+    fill.position.x = rect.x;
+    fill.position.z = rect.z;
+    const x0 = rect.x - rect.w / 2, x1 = rect.x + rect.w / 2;
+    const z0 = rect.z - rect.d / 2, z1 = rect.z + rect.d / 2;
+    const pts = [];
+    for (let x = x0; x <= x1; x += 4) pts.push(new THREE.Vector3(x, this.getHeight(x, z0) + 0.22, z0));
+    for (let z = z0; z <= z1; z += 4) pts.push(new THREE.Vector3(x1, this.getHeight(x1, z) + 0.22, z));
+    for (let x = x1; x >= x0; x -= 4) pts.push(new THREE.Vector3(x, this.getHeight(x, z1) + 0.22, z1));
+    for (let z = z1; z >= z0; z -= 4) pts.push(new THREE.Vector3(x0, this.getHeight(x0, z) + 0.22, z));
+    const line = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.28 }));
+    line.visible = false; // il bordo taglierebbe lo schermo: basta la velatura a terra
+    group.add(fill, line);
+    // Vessilli ai quattro angoli.
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0x4a3826 });
+    const flagMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+    for (const [px, pz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) {
+      const y = this.getHeight(px, pz);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 5), poleMat);
+      pole.position.set(px, y + 1.5, pz);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.75), flagMat);
+      flag.position.set(px + 0.6, y + 2.6, pz);
+      group.add(pole, flag);
+    }
+    this.group.add(group);
+    return { group, fill, line, zone: rect };
   }
 
   // ---------- zone obiettivo ----------

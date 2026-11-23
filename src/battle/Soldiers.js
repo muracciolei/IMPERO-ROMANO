@@ -150,15 +150,17 @@ export class SoldierRenderer {
     this.armorIM = mk(armorGeo(), lambert({}), MAX_SOLDIERS, true);
     this.crestIM = mk(crestGeo(), lambert({}), MAX_SOLDIERS);
     this.cloakIM = mk(cloakGeo(), lambert({ side: THREE.DoubleSide }), MAX_SOLDIERS);
-    this.shadowIM = mk(contactShadowGeo(), new THREE.MeshBasicMaterial({ color: 0x0a0805, transparent: true, opacity: 0.34, depthWrite: false }), MAX_SOLDIERS);
+    this.shadowIM = mk(contactShadowGeo(), new THREE.MeshBasicMaterial({ color: 0x0a0805, transparent: true, opacity: 0.2, depthWrite: false }), MAX_SOLDIERS);
     this.horseIM = mk(horseGeo(), lambert({}), MAX_MOUNTS, true);
     this.elephantIM = mk(elephantGeo(), lambert({}), MAX_ELEPHANTS, true);
     this.cartIM = mk(cartGeo(), lambert({}), MAX_CARTS);
 
     // Barre di stato sopra le coorti (2 draw call totali)
-    const barGeo = new THREE.PlaneGeometry(1, 0.16);
-    this.barBgIM = mk(barGeo, new THREE.MeshBasicMaterial({ color: 0x1a120c, transparent: true, opacity: 0.75, depthWrite: false }), MAX_SQUADS);
-    this.barFillIM = mk(barGeo.clone(), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.95, depthWrite: false }), MAX_SQUADS);
+    const barGeo = new THREE.PlaneGeometry(1, 0.24);
+    this.barBgIM = mk(barGeo, new THREE.MeshBasicMaterial({ color: 0x1c140c, transparent: true, opacity: 0.8, depthWrite: false }), MAX_SQUADS);
+    for (let i = 0; i < MAX_SQUADS; i++) this.barBgIM.instanceColor.setXYZ(i, 0.11, 0.08, 0.05);
+    this.barBgIM.instanceColor.needsUpdate = true;
+    this.barFillIM = mk(barGeo.clone(), new THREE.MeshBasicMaterial({ color: 0x9ac96a, transparent: true, opacity: 0.95, depthWrite: false }), MAX_SQUADS);
     this.barBgIM.renderOrder = 5; this.barFillIM.renderOrder = 6;
 
     // Bandiere per coorte
@@ -290,7 +292,7 @@ export class SoldierRenderer {
         this.cloakIM.setMatrixAt(i, _m); this.shadowIM.setMatrixAt(i, _m);
         // ombra a terra dell'elefante
         if (!hide) {
-          _m.compose(_p.set(s.x, s.y + 0.06, s.z), _qs, _s.set(size * 1.6, 1, size * 1.6));
+          _m.compose(_p.set(s.x, s.y + 0.06, s.z), _qs, _s.set(size * 1.35, 1, size * 1.35));
           this.shadowIM.setMatrixAt(i, _m);
         }
         nBody = i + 1;
@@ -323,7 +325,7 @@ export class SoldierRenderer {
         this.crestIM.setMatrixAt(i, _m);
         this.cloakIM.setMatrixAt(i, _m);
         // ombra di contatto: dà profondità ai ranghi
-        _m.compose(_p.set(s.x, s.y + 0.07, s.z), _qs, _s.set(size * 1.15, 1, size * 1.15));
+        _m.compose(_p.set(s.x, s.y + 0.07, s.z), _qs, _s.set(size * 0.95, 1, size * 0.95));
         this.shadowIM.setMatrixAt(i, _m);
         if (t.shield && !dead) {
           // in testudo lo scudo è alzato sopra la testa
@@ -423,12 +425,12 @@ export class SoldierRenderer {
       _c.setRGB(0.85 - moraleT * 0.55, 0.25 + moraleT * 0.6, 0.2);
       if (sq.state === 'rout') _c.setRGB(0.9, 0.9, 0.9);
       this.barFillIM.instanceColor.setXYZ(nBar, _c.r, _c.g, _c.b);
-      _m.compose(_p.set(sq.anchor.x - (w * (1 - frac)) / 2, by, sq.anchor.z), camQ, _s.set(w * frac, 0.72, 1));
+      _m.compose(_p.set(sq.anchor.x - (w * (1 - frac)) / 2, by, sq.anchor.z), camQ, _s.set(w * frac, 0.8, 1));
       // offset lungo l'asse locale x del billboard
       _p.set(sq.anchor.x, by, sq.anchor.z);
       const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camQ);
       _p.addScaledVector(right, -(w * (1 - frac)) / 2);
-      _m.compose(_p, camQ, _s.set(Math.max(0.001, w * frac), 0.72, 1));
+      _m.compose(_p, camQ, _s.set(Math.max(0.001, w * frac), 0.8, 1));
       this.barFillIM.setMatrixAt(nBar, _m);
       nBar++;
     }

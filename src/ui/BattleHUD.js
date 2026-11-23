@@ -134,7 +134,7 @@ export class BattleHUD {
   enterDeployment() {
     $('bh-deploy').classList.remove('hidden');
     this.el.classList.add('deploying');
-    $('bh-deploy-hint').textContent = this.battle.mission.hint || 'Toca una cohorte y luego el terreno para recolocarla en la zona roja.';
+    $('bh-deploy-hint').textContent = this.battle.mission.hint || 'Tocca una coorte e poi il terreno per ricollocarla nella zona rossa.';
     $('bh-bottom').classList.add('deploying');
   }
   enterBattle() {
@@ -161,10 +161,10 @@ export class BattleHUD {
     });
     $('bh-touch-select').classList.toggle('active', mode === 'select');
     const hints = {
-      camera: 'Toca una cohorte para seleccionarla · arrastra para mover la cámara · pellizca para zoom',
-      select: 'Arrastra sobre las tropas para seleccionarlas · toca una cohorte para elegirla',
-      attackmove: 'Toca el terreno: las coortes avanzarán y atacarán al primer enemigo',
-      attack: 'Toca un enemigo para atacarlo · mantén pulsado para avanzar',
+      camera: 'Tocca una coorte per selezionarla · trascina per muovere la camera · pizzica per lo zoom',
+      select: 'Trascina sulle truppe per selezionarle · tocca una coorte per sceglierla',
+      attackmove: 'Tocca il terreno: le coorti avanzeranno e attaccheranno il primo nemico',
+      attack: 'Tocca un nemico per attaccarlo · tieni premuto per avanzare',
     };
     $('bh-mode-hint').textContent = hints[mode] || '';
     document.querySelector('#bh-stances [data-cmd="attackmove"]').classList.toggle('active', mode === 'attackmove' || mode === 'attack');

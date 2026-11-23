@@ -20,7 +20,7 @@ export class BattleInput {
     this.camera = battle.camera;
     // rig camera
     this.target = { x: 0, z: 60 };
-    this.distance = 120;
+    this.distance = 98;
     this.azimuth = 0;         // 0 = guarda verso nord (-z)
     this.pitch = 0.94;
     this.keys = {};
@@ -503,7 +503,7 @@ export class BattleInput {
       this.select(own ? [own] : [], false);
       return;
     }
-    // en los modos de ataque, el tap es siempre una orden (aunque caiga sobre una cohorte propia)
+    // nelle modalità di attacco il tap è sempre un ordine (anche sopra una coorte propria)
     if (this.touchMode === 'attackmove' || this.touchMode === 'attack') {
       if (!b.selection.length && own) this.select([own], false);
       const enemy = this.squadAt(p, 1, 16) || this.structureAt(p);

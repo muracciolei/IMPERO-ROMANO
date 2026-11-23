@@ -243,19 +243,8 @@ export class CampaignMap {
       ctx.restore();
     }
 
-    // etichette regioni
-    for (const id in REGIONS) {
-      const r = REGIONS[id];
-      const roman = owned.has(id);
-      ctx.font = `${roman ? 'bold ' : ''}${10}px Georgia, serif`;
-      ctx.fillStyle = roman ? 'rgba(240,220,170,0.9)' : 'rgba(70,55,35,0.85)';
-      ctx.fillText(r.name.toUpperCase(), r.label[0], r.label[1]);
-      if (roman && this.view.scale > 1.3) {
-        ctx.font = '7px Georgia, serif';
-        ctx.fillStyle = 'rgba(232,200,96,0.6)';
-        ctx.fillText('· S · P · Q · R ·', r.label[0], r.label[1] + 9);
-      }
-    }
+    // etichette regioni (con anticollisione: le regioni piccole cedono il passo)
+    this._drawRegionLabels(ctx, owned);
 
     // città
     for (const city of CITIES) {
@@ -267,11 +256,17 @@ export class CampaignMap {
       ctx.strokeStyle = 'rgba(30,20,10,0.7)';
       ctx.lineWidth = 0.6;
       ctx.stroke();
-      ctx.font = `${city.capital ? 'bold 10px' : '8.5px'} Georgia, serif`;
-      ctx.fillStyle = city.capital ? '#f5e6b8' : 'rgba(40,30,18,0.9)';
-      ctx.textAlign = 'left';
-      ctx.fillText(city.name, city.x + 4.5, city.y + 3);
-      ctx.textAlign = 'center';
+      if (city.capital || this.view.scale >= 2.0) {
+        const nearBattle = MISSIONS.some((m) => Math.abs(m.map.x - city.x) < 12 && Math.abs(m.map.y - city.y) < 12);
+        ctx.font = `${city.capital ? 'bold 9.5px' : '8px'} Georgia, serif`;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(25,17,8,0.55)';
+        ctx.textAlign = 'left';
+        ctx.strokeText(city.name, city.x + (nearBattle ? 12 : 4.5), city.y + (nearBattle ? -8 : 3));
+        ctx.fillStyle = city.capital ? '#f5e6b8' : 'rgba(40,30,18,0.95)';
+        ctx.fillText(city.name, city.x + (nearBattle ? 12 : 4.5), city.y + (nearBattle ? -8 : 3));
+        ctx.textAlign = 'center';
+      }
     }
 
     // percorso della campagna
@@ -288,15 +283,16 @@ export class CampaignMap {
     }
     ctx.setLineDash([]);
 
-    // marker battaglie
+    // marker battaglie: la prossima è grande, le altre restano punti discreti
     for (let i = 0; i < MISSIONS.length; i++) {
       const m = MISSIONS[i];
       const done = Save.isCompleted(m.id);
       const unlocked = Save.isUnlocked(i);
       const hovered = this.hover && this.hover.index === i;
-      const r = hovered ? 10 : 8;
+      const next = unlocked && !done;
+      const r = hovered ? 10 : next ? 9 : done ? 4.8 : 3.8;
       // alone pulsante per la prossima disponibile
-      if (unlocked && !done) {
+      if (next) {
         const pr = r + 4 + Math.sin(this.pulse * 2) * 2.5;
         ctx.beginPath();
         ctx.arc(m.map.x, m.map.y, pr, 0, Math.PI * 2);
@@ -306,14 +302,17 @@ export class CampaignMap {
       }
       ctx.beginPath();
       ctx.arc(m.map.x, m.map.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = done ? '#c9a227' : unlocked ? '#8f2f25' : '#4a443c';
+      ctx.fillStyle = done ? '#c9a227' : next ? '#8f2f25' : '#4a443c';
       ctx.fill();
-      ctx.strokeStyle = done ? '#f5e6b8' : unlocked ? '#e8c860' : '#6a6258';
-      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = done ? '#f5e6b8' : next ? '#e8c860' : '#6a6258';
+      ctx.lineWidth = next ? 1.4 : 1;
       ctx.stroke();
-      ctx.font = 'bold 8px Georgia, serif';
-      ctx.fillStyle = done ? '#2a1c08' : unlocked ? '#f0dca8' : '#9a9288';
-      ctx.fillText(done ? '✓' : unlocked ? String(i + 1) : '🔒', m.map.x, m.map.y + 3);
+      if (next || hovered) {
+        ctx.font = 'bold 8px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = done ? '#2a1c08' : '#f0dca8';
+        ctx.fillText(String(i + 1), m.map.x, m.map.y + 3);
+      }
     }
 
     // cartiglio e rosa dei venti (in spazio mappa, angolo)
@@ -326,6 +325,60 @@ export class CampaignMap {
     vg.addColorStop(1, 'rgba(10,6,2,0.55)');
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, this.w, this.h);
+  }
+
+  _drawRegionLabels(ctx, owned) {
+    // Ordina per area: le regioni grandi occupano lo spazio per prime,
+    // quelle piccole provano più posizioni e vengono saltate se non c'è posto.
+    const entries = [];
+    for (const id in REGIONS) {
+      const r = REGIONS[id];
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const [x, y] of r.poly) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+      entries.push({ id, r, area: (maxX - minX) * (maxY - minY) });
+    }
+    entries.sort((a, b) => b.area - a.area);
+    // I marker delle battaglie occupano spazio: le etichette non ci passano sopra.
+    const placed = MISSIONS.map((m) => ({ l: m.map.x - 9, r: m.map.x + 9, t: m.map.y - 9, b: m.map.y + 9 }));
+    for (const { id, r, area } of entries) {
+      const roman = owned.has(id);
+      // A scala bassa restano le regioni grandi (e quelle romane): l'Italia minore si legge zoomando.
+      const minScale = area > 6000 ? 0 : area > 2600 ? 1.0 : 1.45;
+      if (!roman && this.view.scale < minScale) continue;
+      const fs = area > 6000 ? 12 : area > 2600 ? 10.5 : 9;
+      ctx.font = `${roman ? 'bold ' : ''}${fs}px Georgia, serif`;
+      const text = r.name.toUpperCase();
+      const tw = ctx.measureText(text).width;
+      // Spostamenti brevi: un'etichetta non deve mai finire in mare o fuori regione.
+      const candidates = [[0, 0], [0, fs + 2], [0, -fs - 2], [-tw * 0.25, 0], [tw * 0.25, 0]];
+      let spot = null;
+      for (const [ox, oy] of candidates) {
+        const x = clamp(r.label[0] + ox, tw / 2 + 10, MAP_W - tw / 2 - 10);
+        const y = clamp(r.label[1] + oy, fs + 8, MAP_H - 12);
+        const box = { l: x - tw / 2 - 2, r: x + tw / 2 + 2, t: y - fs, b: y + 4 };
+        if (!placed.some((p) => box.l < p.r && box.r > p.l && box.t < p.b && box.b > p.t)) {
+          spot = { x, y, box };
+          break;
+        }
+      }
+      if (!spot) continue;
+      placed.push(spot.box);
+      ctx.textAlign = 'center';
+      // Alone chiaro/scuro: leggibilità sia sulla terra sia sul mare.
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = roman ? 'rgba(30,20,8,0.6)' : 'rgba(238,224,196,0.6)';
+      ctx.strokeText(text, spot.x, spot.y);
+      ctx.fillStyle = roman ? 'rgba(255,232,170,0.98)' : 'rgba(45,32,16,0.98)';
+      ctx.fillText(text, spot.x, spot.y);
+      if (roman && area > 1800 && this.view.scale > 1.6) {
+        ctx.font = '6.5px Georgia, serif';
+        ctx.fillStyle = 'rgba(232,200,96,0.55)';
+        ctx.fillText('· S · P · Q · R ·', spot.x, spot.y + fs * 0.85);
+      }
+    }
   }
 
   _cityRoman(city, owned) {
@@ -347,46 +400,57 @@ export class CampaignMap {
   }
 
   _drawDecor(ctx) {
+    // Se la decorazione esce dalla vista, meglio non mostrarla tagliata.
+    const s = this.baseScale * this.view.scale;
+    const vx0 = this.view.x - this.w / 2 / s, vx1 = this.view.x + this.w / 2 / s;
+    const vy0 = this.view.y - this.h / 2 / s, vy1 = this.view.y + this.h / 2 / s;
+    const compassVisible = vx0 < 885 && vx1 > 955 && vy0 < 505 && vy1 > 575;
+    const cartoucheVisible = vx0 < 10 && vx1 > 205 && vy0 < 530 && vy1 > 580;
+
     // rosa dei venti
-    const cx = 920, cy = 540, R = 30;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.strokeStyle = 'rgba(232,200,96,0.5)';
-    ctx.fillStyle = 'rgba(232,200,96,0.5)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, R * 0.62, 0, Math.PI * 2); ctx.stroke();
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      const len = i % 2 === 0 ? R : R * 0.62;
-      ctx.beginPath();
-      ctx.moveTo(Math.sin(a - 0.09) * R * 0.2, Math.cos(a - 0.09) * R * 0.2);
-      ctx.lineTo(Math.sin(a) * len, Math.cos(a) * len);
-      ctx.lineTo(Math.sin(a + 0.09) * R * 0.2, Math.cos(a + 0.09) * R * 0.2);
-      ctx.closePath();
-      if (i % 2 === 0) ctx.fill(); else ctx.stroke();
+    if (compassVisible) {
+      const cx = 920, cy = 540, R = 30;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.strokeStyle = 'rgba(232,200,96,0.5)';
+      ctx.fillStyle = 'rgba(232,200,96,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, R * 0.62, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const len = i % 2 === 0 ? R : R * 0.62;
+        ctx.beginPath();
+        ctx.moveTo(Math.sin(a - 0.09) * R * 0.2, Math.cos(a - 0.09) * R * 0.2);
+        ctx.lineTo(Math.sin(a) * len, Math.cos(a) * len);
+        ctx.lineTo(Math.sin(a + 0.09) * R * 0.2, Math.cos(a + 0.09) * R * 0.2);
+        ctx.closePath();
+        if (i % 2 === 0) ctx.fill(); else ctx.stroke();
+      }
+      ctx.font = 'bold 9px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('SEPTENTRIO', 0, -R - 5);
+      ctx.restore();
     }
-    ctx.font = 'bold 9px Georgia, serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('SEPTENTRIO', 0, -R - 5);
-    ctx.restore();
 
     // cartiglio
-    ctx.save();
-    ctx.translate(70, 555);
-    ctx.fillStyle = 'rgba(20,14,8,0.55)';
-    ctx.fillRect(-58, -22, 190, 44);
-    ctx.strokeStyle = 'rgba(232,200,96,0.55)';
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(-58, -22, 190, 44);
-    ctx.fillStyle = '#e8c860';
-    ctx.font = 'bold 13px Georgia, serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('IMPERIVM ROMANVM', -48, -4);
-    ctx.font = 'italic 9px Georgia, serif';
-    ctx.fillStyle = 'rgba(232,220,190,0.75)';
-    const prog = Save.campaignProgress();
-    ctx.fillText(`Battaglie: ${prog.done}/${prog.total} · Province: ${Save.romanRegions().size}`, -48, 12);
-    ctx.restore();
+    if (cartoucheVisible) {
+      ctx.save();
+      ctx.translate(70, 555);
+      ctx.fillStyle = 'rgba(20,14,8,0.55)';
+      ctx.fillRect(-58, -22, 190, 44);
+      ctx.strokeStyle = 'rgba(232,200,96,0.55)';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(-58, -22, 190, 44);
+      ctx.fillStyle = '#e8c860';
+      ctx.font = 'bold 13px Georgia, serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('IMPERIVM ROMANVM', -48, -4);
+      ctx.font = 'italic 9px Georgia, serif';
+      ctx.fillStyle = 'rgba(232,220,190,0.75)';
+      const prog = Save.campaignProgress();
+      ctx.fillText(`Battaglie: ${prog.done}/${prog.total} · Province: ${Save.romanRegions().size}`, -48, 12);
+      ctx.restore();
+    }
   }
 }

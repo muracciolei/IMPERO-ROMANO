@@ -42,11 +42,11 @@ Oppure pubblica semplicemente la cartella su GitHub Pages (branch `main`, radice
 | Gruppi | `Ctrl+1..9` assegna · `1..9` richiama |
 
 ### Mobile
-- **✋ Cámara**: tocca per selezionare/ordinare, trascina per spostare la camera, doppio tap su una coorte = tutte le coorti dello stesso tipo.
-- **▭ Selecc.**: trascina il dito sulle truppe per selezionarle con un rettangolo.
-- **⚔ Avanzar**: tocca il terreno per un ordine attack-move (si può tenere attiva per ordini ripetuti).
-- **🎯 Atacar**: tocca un nemico per attaccarlo.
-- **👑 Todos**: seleziona tutto l'esercito · **🏠 General**: centra sul generale · **⏸ Pausa**.
+- **✋ Camera**: tocca per selezionare/ordinare, trascina per spostare la camera, doppio tap su una coorte = tutte le coorti dello stesso tipo.
+- **▭ Selez.**: trascina il dito sulle truppe per selezionarle con un rettangolo.
+- **⚔ Avanti**: tocca il terreno per un ordine attack-move (si può tenere attiva per ordini ripetuti).
+- **🎯 Attacca**: tocca un nemico per attaccarlo.
+- **👑 Tutti**: seleziona tutto l'esercito · **🏠 Generale**: centra sul generale · **⏸ Pausa**.
 - Pizzico con due dita = zoom · rotazione con due dita = camera · **tocco prolungato** = attack-move.
 - Pulsanti grandi (≥48 px), layout adattato a schermi stretti e safe-area per notch.
 

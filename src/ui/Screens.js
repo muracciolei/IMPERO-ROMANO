@@ -9,12 +9,14 @@ import { UNITS, FACTIONS, PROG_CATS, VET_LEVELS, VET_XP, progressionCat } from '
 import { Save, GENERAL_TITLES, GENERAL_XP_LEVELS, generalBonuses, vetInfo } from '../core/Save.js';
 import { Audio } from '../core/Audio.js';
 import { CampaignMap } from './CampaignMap.js';
+import { REGIONS } from '../data/Regions.js';
 import { Battle } from '../battle/Battle.js';
 import { describePrimary, describeSecondary } from '../battle/Objectives.js';
 import { makeRNG } from '../core/RNG.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['menu', 'map', 'briefing', 'legions', 'battles', 'settings', 'result', 'rewards'];
+const provinceText = (n) => `${n} ${n === 1 ? 'provincia' : 'province'}`;
 
 let currentBattle = null;
 let currentMission = null;
@@ -82,7 +84,7 @@ export const Screens = {
     const has = Save.hasCampaign();
     $('btn-continue').disabled = !has;
     const prog = Save.campaignProgress();
-    $('menu-progress').textContent = has ? `Campagna: ${prog.done}/${prog.total} battaglie · ${Save.romanRegions().size} province` : 'Nessuna campagna in corso';
+    $('menu-progress').textContent = has ? `Campagna: ${prog.done}/${prog.total} battaglie · ${provinceText(Save.romanRegions().size)}` : 'Nessuna campagna in corso';
   },
 
   // ================= MAPPA =================
@@ -113,12 +115,10 @@ export const Screens = {
     if (this._pendingFlash) { map.flashConquest(this._pendingFlash); this._pendingFlash = null; }
     this._buildMapSidebar();
     const prog = Save.campaignProgress();
-    $('map-progress').innerHTML = `<b>${prog.done}</b>/${prog.total} battaglie · <b>${Save.romanRegions().size}</b> province romane`;
-    if (focusNext) {
-      const idx = Save.nextMissionIndex();
-      const m = MISSIONS[idx];
-      map.centerOn(m.map.x, m.map.y, 1.8);
-    } else map.fitAll();
+    const regions = Save.romanRegions().size;
+    $('map-progress').innerHTML = `<b>${prog.done}</b>/${prog.total} battaglie · <b>${regions}</b> ${regions === 1 ? 'provincia romana' : 'province romane'}`;
+    // Vista completa: il Mediterraneo intero, senza etichette tagliate ai bordi.
+    map.fitAll();
   },
 
   _buildMapSidebar() {
@@ -239,7 +239,7 @@ export const Screens = {
     $('result-sub').textContent = mission ? mission.name : '';
     $('result-stars').textContent = victory ? '★'.repeat(result.stars) + '☆'.repeat(3 - result.stars) : '☆☆☆';
     if (!victory && result.loseReason) $('result-reason').textContent = result.loseReason;
-    else $('result-reason').textContent = victory ? (mission?.regions?.length ? `Nuove province romane: ${mission.regions.map((r) => r).join(', ')}` : 'La storia prosegue.') : 'Roma non dimentica i suoi caduti. Riprova, comandante.';
+    else $('result-reason').textContent = victory ? (mission?.regions?.length ? `Nuove province romane: ${mission.regions.map((id) => REGIONS[id]?.name || id).join(', ')}` : 'La storia prosegue.') : 'Roma non dimentica i suoi caduti. Riprova, comandante.';
 
     const mins = Math.floor(result.time / 60), secs = Math.floor(result.time % 60);
     $('result-stats').innerHTML = `
