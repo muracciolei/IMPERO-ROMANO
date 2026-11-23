@@ -457,6 +457,9 @@ select {
 .mob-btn:active { transform: scale(0.94); }
 #bh-mode-hint { display: none; position: absolute; left: 0; right: 0; top: 134px; text-align: center; font-size: 11px; color: var(--gold-bright); background: rgba(10, 7, 4, 0.7); padding: 4px 8px; pointer-events: none; }
 #battle-hud.deploying #bh-mode-hint, #battle-hud.deploying #bh-right { display: none; }
+#bh-collapse { display: none; position: absolute; right: 10px; bottom: 100%; margin-bottom: 4px; width: 44px; height: 32px; background: rgba(22, 15, 9, 0.92); border: 1px solid rgba(201, 162, 39, 0.5); color: var(--gold-bright); font-size: 18px; pointer-events: auto; }
+#battle-hud.collapsed #bh-left, #battle-hud.collapsed #bh-right { display: none; }
+@media (pointer: coarse), (max-width: 760px) { #bh-collapse { display: block; } }
 @media (pointer: coarse) { #bh-mobile-bar { display: flex; } #bh-mode-hint { display: block; } }
 
 @media (max-width: 760px) {

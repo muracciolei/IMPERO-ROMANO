@@ -20,6 +20,7 @@ const _m2 = new THREE.Matrix4();
 const _p = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
+const _qs = new THREE.Quaternion(); // quaternion neutro para sombras a tierra
 const _s = new THREE.Vector3();
 const _e = new THREE.Euler();
 const _c = new THREE.Color();
@@ -57,6 +58,26 @@ function weaponGeo() {
     box(0.055, 1.0, 0.055, 0, 0.5, 0),
     box(0.16, 0.05, 0.08, 0, 0.05, 0), // guardia
   ]);
+}
+function armorGeo() {
+  return mergeGeoms([
+    box(0.46, 0.32, 0.3, 0, 1.02, 0),      // corazza
+    box(0.5, 0.07, 0.32, 0, 1.21, 0),      // spalliere
+  ]);
+}
+function crestGeo() {
+  return mergeGeoms([
+    box(0.08, 0.2, 0.36, 0, 1.72, -0.02),
+    box(0.05, 0.13, 0.3, 0, 1.84, -0.02),
+  ]);
+}
+function cloakGeo() {
+  return mergeGeoms([box(0.46, 0.6, 0.05, 0, 0.94, -0.24)]);
+}
+function contactShadowGeo() {
+  const g = new THREE.CircleGeometry(0.62, 10);
+  g.rotateX(-Math.PI / 2);
+  return g;
 }
 function horseGeo() {
   return mergeGeoms([
@@ -126,6 +147,10 @@ export class SoldierRenderer {
     this.headIM = mk(soldierHeadGeo(), lambert({}), MAX_SOLDIERS);
     this.shieldIM = mk(shieldGeo(), lambert({}), MAX_SOLDIERS);
     this.weaponIM = mk(weaponGeo(), lambert({ color: 0xb8b8b8 }), MAX_SOLDIERS);
+    this.armorIM = mk(armorGeo(), lambert({}), MAX_SOLDIERS, true);
+    this.crestIM = mk(crestGeo(), lambert({}), MAX_SOLDIERS);
+    this.cloakIM = mk(cloakGeo(), lambert({ side: THREE.DoubleSide }), MAX_SOLDIERS);
+    this.shadowIM = mk(contactShadowGeo(), new THREE.MeshBasicMaterial({ color: 0x0a0805, transparent: true, opacity: 0.34, depthWrite: false }), MAX_SOLDIERS);
     this.horseIM = mk(horseGeo(), lambert({}), MAX_MOUNTS, true);
     this.elephantIM = mk(elephantGeo(), lambert({}), MAX_ELEPHANTS, true);
     this.cartIM = mk(cartGeo(), lambert({}), MAX_CARTS);
@@ -187,6 +212,12 @@ export class SoldierRenderer {
       }
       _c.setHex(fac.tunic).multiplyScalar(v * boost);
       this.bodyIM.instanceColor.setXYZ(i, _c.r, _c.g, _c.b);
+      _c.setHex(0x9aa6b2).multiplyScalar(v * boost);
+      this.armorIM.instanceColor.setXYZ(i, _c.r, _c.g, _c.b);
+      _c.setHex(s.squad.side === 0 ? 0xb12820 : fac.banner).multiplyScalar(v * boost);
+      this.crestIM.instanceColor.setXYZ(i, _c.r, _c.g, _c.b);
+      _c.setHex(fac.tunic).multiplyScalar(v * boost * 0.55);
+      this.cloakIM.instanceColor.setXYZ(i, _c.r, _c.g, _c.b);
       _c.setHex(fac.helmet).multiplyScalar(v * boost);
       this.headIM.instanceColor.setXYZ(i, _c.r, _c.g, _c.b);
       if (s.type.shield) {
@@ -205,6 +236,9 @@ export class SoldierRenderer {
     this.bodyIM.instanceColor.needsUpdate = true;
     this.headIM.instanceColor.needsUpdate = true;
     this.shieldIM.instanceColor.needsUpdate = true;
+    this.armorIM.instanceColor.needsUpdate = true;
+    this.crestIM.instanceColor.needsUpdate = true;
+    this.cloakIM.instanceColor.needsUpdate = true;
     this.horseIM.instanceColor.needsUpdate = true;
     this.elephantIM.instanceColor.needsUpdate = true;
     this.cartIM.instanceColor.needsUpdate = true;
@@ -252,6 +286,13 @@ export class SoldierRenderer {
         _m.makeScale(0, 0, 0);
         this.bodyIM.setMatrixAt(i, _m); this.headIM.setMatrixAt(i, _m);
         this.shieldIM.setMatrixAt(i, _m); this.weaponIM.setMatrixAt(i, _m);
+        this.armorIM.setMatrixAt(i, _m); this.crestIM.setMatrixAt(i, _m);
+        this.cloakIM.setMatrixAt(i, _m); this.shadowIM.setMatrixAt(i, _m);
+        // ombra a terra dell'elefante
+        if (!hide) {
+          _m.compose(_p.set(s.x, s.y + 0.06, s.z), _qs, _s.set(size * 1.6, 1, size * 1.6));
+          this.shadowIM.setMatrixAt(i, _m);
+        }
         nBody = i + 1;
         continue;
       }
@@ -272,10 +313,18 @@ export class SoldierRenderer {
         _m.makeScale(0, 0, 0);
         this.bodyIM.setMatrixAt(i, _m); this.headIM.setMatrixAt(i, _m);
         this.shieldIM.setMatrixAt(i, _m); this.weaponIM.setMatrixAt(i, _m);
+        this.armorIM.setMatrixAt(i, _m); this.crestIM.setMatrixAt(i, _m);
+        this.cloakIM.setMatrixAt(i, _m); this.shadowIM.setMatrixAt(i, _m);
       } else {
         _m.compose(_p.set(s.x + rx, y + riderY, s.z + rz), _q, _s.set(size, size, size));
         this.bodyIM.setMatrixAt(i, _m);
         this.headIM.setMatrixAt(i, _m);
+        this.armorIM.setMatrixAt(i, _m);
+        this.crestIM.setMatrixAt(i, _m);
+        this.cloakIM.setMatrixAt(i, _m);
+        // ombra di contatto: dà profondità ai ranghi
+        _m.compose(_p.set(s.x, s.y + 0.07, s.z), _qs, _s.set(size * 1.15, 1, size * 1.15));
+        this.shadowIM.setMatrixAt(i, _m);
         if (t.shield && !dead) {
           // in testudo lo scudo è alzato sopra la testa
           if (s.squad.formation === 'testudo') {
@@ -335,11 +384,17 @@ export class SoldierRenderer {
 
     this.bodyIM.count = nBody; this.headIM.count = nBody;
     this.shieldIM.count = nBody; this.weaponIM.count = nBody;
+    this.armorIM.count = nBody; this.crestIM.count = nBody;
+    this.cloakIM.count = nBody; this.shadowIM.count = nBody;
     this.horseIM.count = nMount; this.elephantIM.count = nEle; this.cartIM.count = nCart;
     this.bodyIM.instanceMatrix.needsUpdate = true;
     this.headIM.instanceMatrix.needsUpdate = true;
     this.shieldIM.instanceMatrix.needsUpdate = true;
     this.weaponIM.instanceMatrix.needsUpdate = true;
+    this.armorIM.instanceMatrix.needsUpdate = true;
+    this.crestIM.instanceMatrix.needsUpdate = true;
+    this.cloakIM.instanceMatrix.needsUpdate = true;
+    this.shadowIM.instanceMatrix.needsUpdate = true;
     this.horseIM.instanceMatrix.needsUpdate = true;
     this.elephantIM.instanceMatrix.needsUpdate = true;
     this.cartIM.instanceMatrix.needsUpdate = true;

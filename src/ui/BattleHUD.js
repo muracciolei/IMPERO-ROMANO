@@ -103,6 +103,11 @@ export class BattleHUD {
     document.querySelectorAll('#bh-mobile-bar [data-mode]').forEach((btn) => {
       btn.addEventListener('click', () => b.input.setTouchMode(btn.dataset.mode));
     });
+    $('bh-collapse').addEventListener('click', () => {
+      this.el.classList.toggle('collapsed');
+      $('bh-collapse').textContent = this.el.classList.contains('collapsed') ? '⌃' : '⌄';
+      Audio.click();
+    });
     $('mob-all').addEventListener('click', () => b.input.selectAll());
     $('mob-focus').addEventListener('click', () => b.input.focusGeneral());
     $('mob-pause').addEventListener('click', () => b.togglePause());

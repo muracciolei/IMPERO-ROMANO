@@ -801,7 +801,7 @@ export class Sim {
   // ---------------- danni ----------------
   _meleeHit(a, d) {
     const as = a.squad, ds = d.squad;
-    let atk = a.type.atk * as.form.atk;
+    let atk = a.type.atk * as.form.atk * 1.4;
     if (as.side === 0) atk *= as.vet.atk * (this._nearGeneral(as, 0) ? this.opts.general.meleeBonus : 1);
     else atk *= this.diffMul.enemyAtk;
     atk *= 1 - as.fatigue / 260;
@@ -834,7 +834,7 @@ export class Sim {
 
   _missileDamage(shooter, victim) {
     const vs = victim.squad;
-    let dmg = shooter.type.missile.dmg;
+    let dmg = shooter.type.missile.dmg * 1.18;
     if (shooter.squad.side === 0) dmg *= shooter.squad.vet.atk;
     else dmg *= this.diffMul.enemyAtk;
     let mul = vs.form.missileDef;
