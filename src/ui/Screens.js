@@ -116,9 +116,15 @@ export const Screens = {
     this._buildMapSidebar();
     const prog = Save.campaignProgress();
     const regions = Save.romanRegions().size;
-    $('map-progress').innerHTML = `<b>${prog.done}</b>/${prog.total} battaglie · <b>${regions}</b> ${regions === 1 ? 'provincia romana' : 'province romane'}`;
-    // Vista completa: il Mediterraneo intero, senza etichette tagliate ai bordi.
-    map.fitAll();
+    const compact = window.matchMedia('(max-width: 760px)').matches;
+    $('map-progress').innerHTML = `<b>${prog.done}</b>/${prog.total}${compact ? '' : ' battaglie'} · <b>${regions}</b> ${regions === 1 ? (compact ? 'provincia' : 'provincia romana') : 'province romane'}`;
+    // Su telefono il Mediterraneo intero è troppo piccolo: apri sulla prossima battaglia.
+    if (compact) {
+      const next = MISSIONS[Save.nextMissionIndex()];
+      map.centerOn(next.map.x, next.map.y, focusNext ? 2.4 : 1.8);
+    } else {
+      map.fitAll();
+    }
   },
 
   _buildMapSidebar() {

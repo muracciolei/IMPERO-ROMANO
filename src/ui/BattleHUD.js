@@ -21,6 +21,9 @@ export class BattleHUD {
     this._acc = 0; this._mapAcc = 0; this._objCache = '';
     this._cardRefs = [];
     this.messages = [];
+    this._topH = 0;
+    this._onResize = () => { this._topH = 0; this._placeOverlays(); };
+    window.addEventListener('resize', this._onResize);
 
     $('bh-mission-name').textContent = battle.mission.name;
     $('bh-mission-date').textContent = `${battle.mission.date} · ${battle.mission.place}`;
@@ -31,6 +34,7 @@ export class BattleHUD {
     this._wire();
     this._buildMinimapCache();
     this.setSpeed(1);
+    this._placeOverlays();
   }
 
   // ---------- costruzione ----------
@@ -130,17 +134,34 @@ export class BattleHUD {
     if ('ontouchstart' in window) $('bh-touch-controls').classList.add('touch-visible');
   }
 
+  // Su telefono il pannello superiore è alto: avvisi e messaggi vanno sotto, non sopra.
+  _placeOverlays() {
+    const top = $('bh-top'), hint = $('bh-mode-hint'), msgs = $('bh-messages');
+    if (!top || !hint || !msgs) return;
+    if (window.innerWidth > 760) {
+      hint.style.top = ''; msgs.style.top = ''; this._topH = 0; return;
+    }
+    const h = Math.round(top.getBoundingClientRect().height);
+    if (h === this._topH) return;
+    this._topH = h;
+    const y = h + 4;
+    hint.style.top = `${y}px`;
+    msgs.style.top = `${y + hint.offsetHeight + 4}px`;
+  }
+
   // ---------- stati ----------
   enterDeployment() {
     $('bh-deploy').classList.remove('hidden');
     this.el.classList.add('deploying');
     $('bh-deploy-hint').textContent = this.battle.mission.hint || 'Tocca una coorte e poi il terreno per ricollocarla nella zona rossa.';
     $('bh-bottom').classList.add('deploying');
+    this._topH = 0; this._placeOverlays();
   }
   enterBattle() {
     $('bh-deploy').classList.add('hidden');
     this.el.classList.remove('deploying');
     $('bh-bottom').classList.remove('deploying');
+    this._topH = 0; this._placeOverlays();
   }
   setPaused(p) {
     $('bh-pause-overlay').classList.toggle('hidden', !p);
@@ -167,6 +188,7 @@ export class BattleHUD {
       attack: 'Tocca un nemico per attaccarlo · tieni premuto per avanzare',
     };
     $('bh-mode-hint').textContent = hints[mode] || '';
+    this._topH = 0; this._placeOverlays();
     document.querySelector('#bh-stances [data-cmd="attackmove"]').classList.toggle('active', mode === 'attackmove' || mode === 'attack');
   }
   togglePauseMenu(force) {
@@ -228,7 +250,8 @@ export class BattleHUD {
     div.className = `bh-msg ${kind}`;
     div.textContent = text;
     wrap.appendChild(div);
-    while (wrap.children.length > 5) wrap.removeChild(wrap.firstChild);
+    const maxMsgs = window.innerWidth <= 760 ? 3 : 5;
+    while (wrap.children.length > maxMsgs) wrap.removeChild(wrap.firstChild);
     setTimeout(() => { div.classList.add('fade'); setTimeout(() => div.remove(), 900); }, 5200);
   }
 
@@ -327,7 +350,7 @@ export class BattleHUD {
       const s = b.objectives.secondaries[i];
       html += `<div class="obj-secondary ${s.done ? 'done' : ''}">${s.done ? '✓' : '○'} ${describeSecondary(s)}</div>`;
     }
-    if (html !== this._objCache) { this._objCache = html; $('bh-objectives').innerHTML = html; }
+    if (html !== this._objCache) { this._objCache = html; $('bh-objectives').innerHTML = html; this._topH = 0; this._placeOverlays(); }
 
     // carte unità
     for (const ref of this._cardRefs) {
@@ -358,6 +381,7 @@ export class BattleHUD {
   }
 
   dispose() {
+    window.removeEventListener('resize', this._onResize);
     this.el.classList.add('hidden');
     $('bh-pause-menu').classList.add('hidden');
     $('bh-pause-overlay').classList.add('hidden');

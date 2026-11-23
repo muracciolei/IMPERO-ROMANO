@@ -463,17 +463,50 @@ select {
 @media (pointer: coarse) { #bh-mobile-bar { display: flex; } #bh-mode-hint { display: block; } }
 
 @media (max-width: 760px) {
+  .map-topbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "back title title" "progress tools tools";
+    align-items: center;
+    gap: 4px 6px;
+    padding: 6px 8px;
+  }
+  #map-back { grid-area: back; width: 44px; height: 44px; }
+  .map-title { grid-area: title; font-size: 12px; letter-spacing: 1.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .map-title span { display: none; }
+  .map-progress { grid-area: progress; margin-left: 0; font-size: 10px; line-height: 1.2; }
+  .map-tools { grid-area: tools; justify-self: end; gap: 4px; }
+  .map-tools .icon-btn { width: 44px; height: 44px; font-size: 18px; }
   .map-body { flex-direction: column; }
   #map-sidebar { width: 100%; max-height: 38vh; border-left: none; border-top: 1px solid rgba(201, 162, 39, 0.3); display: none; }
   #screen-map.sidebar-open #map-sidebar { display: flex; }
-  #map-canvas-wrap { min-height: 52vh; }
+  #map-canvas-wrap { min-height: 46vh; }
+  .phase-head { min-height: 44px; padding: 8px 10px; }
+  .mission-item { min-height: 42px; padding: 8px 6px; font-size: 13px; }
   .menu-columns { display: none; }
-  #bh-top { flex-wrap: wrap; gap: 6px; padding: 6px 8px; }
-  #bh-objectives { order: 5; max-width: 100%; flex-basis: 100%; }
-  #bh-armies { min-width: 100px; }
-  #bh-mission { min-width: 0; }
-  #bh-mission-name { font-size: 12px; }
-  #bh-bottom { bottom: 62px; padding: 6px 8px; gap: 6px; flex-direction: column; align-items: stretch; }
+  #bh-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "mission menu" "clock clock" "objectives objectives";
+    align-items: start;
+    gap: 4px 8px;
+    padding: 4px 8px 6px;
+  }
+  #bh-mission { grid-area: mission; min-width: 0; }
+  #bh-mission-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #bh-mission-date { font-size: 10px; }
+  #bh-clock { grid-area: clock; justify-self: start; gap: 4px; padding: 2px 4px; }
+  #bh-clock button { width: 34px; height: 32px; font-size: 13px; }
+  #bh-speeds { gap: 2px; }
+  #bh-time { min-width: 42px; font-size: 13px; }
+  #bh-menu-btn { grid-area: menu; width: 40px; height: 40px; }
+  #bh-armies { display: none; }
+  #bh-objectives { grid-area: objectives; order: initial; max-width: 100%; flex-basis: auto; }
+  .obj-primary { padding: 4px 8px; }
+  .obj-primary b { font-size: 11px; }
+  .obj-primary span { font-size: 10.5px; }
+  .obj-secondary { font-size: 10.5px; padding: 0 8px; }
+  #bh-bottom { bottom: calc(70px + env(safe-area-inset-bottom)); padding: 6px 8px; gap: 6px; flex-direction: column; align-items: stretch; }
   #bh-left { width: 100%; }
   #bh-selection { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
   .unit-card { width: 120px; flex: 0 0 120px; min-height: 58px; padding: 7px 9px; }
@@ -482,12 +515,14 @@ select {
   #bh-stances, #bh-formations, #bh-abilities { flex: 0 0 auto; }
   #bh-stances button, .form-btn, .abil-btn { width: 46px; height: 46px; font-size: 18px; }
   .form-btn .f-key, .abil-btn .a-key { font-size: 9px; }
-  #bh-right { position: absolute; right: 8px; bottom: 130px; }
+  #bh-right { position: absolute; right: 8px; bottom: calc(100% + 8px); }
   #bh-minimap { width: 112px; height: 112px; }
   #bh-touch-controls.touch-visible { display: flex; }
   #bh-touch-controls button { width: 48px; height: 44px; }
-  #bh-messages { top: 118px; max-width: 250px; }
+  #bh-messages { top: 118px; max-width: min(250px, calc(100vw - 148px)); }
   .bh-msg { font-size: 11px; padding: 4px 8px; }
+  #bh-attackmove-hint { display: none; }
+  #bh-collapse { display: block; right: auto; left: 10px; }
   #bh-deploy { bottom: 195px; padding: 10px 16px; }
   .deploy-title { font-size: 15px; letter-spacing: 4px; }
   .deploy-hint { font-size: 11.5px; }
@@ -497,6 +532,8 @@ select {
   .pm-panel { width: min(92vw, 360px); padding: 18px; }
   .pm-panel .menu-btn { min-height: 50px; }
   .briefing-panel { padding: 20px 16px; }
+  .back-abs { width: 44px; height: 44px; top: 10px; left: 10px; }
+  .br-phase { padding: 0 46px; }
   .br-commanders { gap: 8px; }
   .br-commanders b { font-size: 12px; }
   #br-start { width: 100%; font-size: 15px; padding: 14px; }

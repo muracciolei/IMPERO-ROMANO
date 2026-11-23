@@ -265,15 +265,21 @@ export class Terrain {
     this.rocks.frustumCulled = false;
     this.group.add(this.rocks);
 
-    // Ciuffi d'erba: una sola draw call, danno texture e profondità al terreno.
-    const tuftGeoms = [];
-    for (let i = 0; i < 3; i++) {
-      const blade = new THREE.ConeGeometry(0.06, 0.5, 3);
-      blade.translate((i - 1) * 0.09, 0.25, (i % 2) * 0.07);
-      tuftGeoms.push(blade);
+    // Ciuffi d'erba: 6 lame triangolari per ciuffo (18 vertici, 6 triangoli).
+    // Molto più leggeri dei coni precedenti, stessa resa a distanza di gioco.
+    const tuftVerts = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.35;
+      const dx = Math.cos(a), dz = Math.sin(a);
+      const px = -dz * 0.045, pz = dx * 0.045;
+      const bx = dx * 0.03, bz = dz * 0.03;
+      tuftVerts.push(bx - px, 0, bz - pz, bx + px, 0, bz + pz, dx * 0.17, 0.55, dz * 0.17);
     }
+    const tuftGeo = new THREE.BufferGeometry();
+    tuftGeo.setAttribute('position', new THREE.Float32BufferAttribute(tuftVerts, 3));
+    tuftGeo.computeVertexNormals();
     const tuftCount = quality === 'bassa' ? 1500 : quality === 'alta' ? 5200 : 3400;
-    this.tufts = new THREE.InstancedMesh(mergeGeoms(tuftGeoms), new THREE.MeshBasicMaterial({}), tuftCount);
+    this.tufts = new THREE.InstancedMesh(tuftGeo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), tuftCount);
     this.tufts.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(tuftCount * 3).fill(1), 3);
     const up = new THREE.Vector3(0, 1, 0);
     const grassC = new THREE.Color(0x8a9a4a);
